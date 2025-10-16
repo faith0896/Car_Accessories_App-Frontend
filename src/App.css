@@ -1,3 +1,4 @@
+/* Container for the whole app, centered with max width */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -5,19 +6,23 @@
   text-align: center;
 }
 
+/* Logo styles with hover effect */
 .logo {
   height: 6em;
   padding: 1.5em;
   will-change: filter;
-  transition: filter 300ms;
+  transition: filter 300ms ease;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* Spin animation for logo */
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -27,16 +32,81 @@
   }
 }
 
+/* Only animate logo spin if user allows motion */
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
 }
 
+/* Generic card padding */
 .card {
   padding: 2em;
+  background-color: #fff; /* white background for card */
+  border-radius: 8px; /* slightly rounded corners */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* subtle shadow */
+  margin-bottom: 2rem;
+  text-align: left; /* usually better for cards */
 }
 
+/* Subtle text color for read-the-docs class */
 .read-the-docs {
   color: #888;
+  font-style: italic;
+}
+
+/* Layout fixes: header, main content and footer */
+
+/* Navbar fixed height and background */
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  max-width: 1280px;
+  background-color: #0a2348; /* dark blue background */
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  z-index: 1000;
+}
+
+/* Push main content below navbar */
+.main-content {
+  margin-top: 84px; /* navbar height */
+  padding: 2rem;
+  min-height: calc(100vh - 84px - 100px); /* subtract navbar and footer height */
+  text-align: left;
+}
+
+/* Footer styling */
+.footer {
+  background-color: #0a2348;
+  color: white;
+  padding: 2rem;
+  font-size: 0.9rem;
+  text-align: center;
+  border-top: 1px solid #123456;
+  margin-top: 2rem;
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center;
+}
+
+.btn {
+  background-color: #646cff;
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+  background-color: #5354cc;
 }

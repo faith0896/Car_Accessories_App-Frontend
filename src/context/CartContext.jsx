@@ -1,159 +1,196 @@
-import { createContext, useState, useContext, useEffect } from "react";
-import { createCart, updateCartItem, deleteCartItem, getCart } from "../services/Api";
+import React, { createContext, useState, useContext, useEffect } from "react";
+import {
+    createCart,
+    updateCartItem,
+    deleteCartItem,
+    getCart,
+} from "../services/Api";
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState([]);
-  const [cartId, setCartId] = useState(null);
-  const [lastOrder, setLastOrder] = useState(() => {
-    try {
-      const savedOrder = localStorage.getItem("lastOrder");
-      return savedOrder ? JSON.parse(savedOrder) : null;
-    } catch {
-      return null;
-    }
-  });
+    const { user, token, loading } = useAuth();
+    const [cartItems, setCartItems] = useState([]);
+    const [cartId, setCartId] = useState(null);
+    const [userId, setUserId] = useState(null);
 
-  const userId = 1; 
-
-  // Fetch cart from backend 
-  useEffect(() => {
-    async function fetchCart() {
-      try {
-        const response = await getCart(userId);
-        if (response.data) {
-          setCartItems(response.data.cartItems);
-          setCartId(response.data.cartId);
+    const [lastOrder, setLastOrder] = useState(() => {
+        try {
+            const savedOrder = localStorage.getItem("lastOrder");
+            return savedOrder ? JSON.parse(savedOrder) : null;
+        } catch {
+            return null;
         }
-      } catch (error) {
-        console.error("Error fetching cart:", error.response?.data || error.message);
-      }
-    }
-    fetchCart();
-  }, []);
+    });
 
-  
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cartItems));
-  }, [cartItems]);
+    // Set userId once auth is ready
+    useEffect(() => {
+        if (loading) return; // wait for auth loading
 
-  useEffect(() => {
-    if (lastOrder) {
-      localStorage.setItem("lastOrder", JSON.stringify(lastOrder));
-    } else {
-      localStorage.removeItem("lastOrder");
-    }
-  }, [lastOrder]);
+        if (!user || !token) {
+            console.log("No logged-in user detected. Skipping cart setup.");
+            setUserId(null);
+            setCartItems([]);
+            setCartId(null);
+            return;
+        }
 
-  const keyOf = (p) => p.productId ?? p.id;
+        if (user.userId) {
+            setUserId(user.userId);
+        } else {
+            console.warn("Logged-in user has no userId");
+            setUserId(null);
+        }
+    }, [user, token, loading]);
 
-  // Add item to cart (and backend)
-  const addToCart = async (product) => {
-    const id = keyOf(product);
-    const existing = cartItems.find((item) => keyOf(item) === id);
+    // Fetch cart when userId changes
+    useEffect(() => {
+        const fetchCart = async () => {
+            if (!userId) return;
 
-    if (existing) {
-      updateQuantity(id, existing.quantity + 1);
-      return;
-    }
+            try {
+                const res = await getCart(userId);
+                const items = res?.data?.cartItems ?? [];
+                const cid = res?.data?.cartId ?? null;
 
-    
-    const newItem = { ...product, quantity: 1 };
-    setCartItems((prev) => [...prev, newItem]);
+                setCartItems(Array.isArray(items) ? items : []);
+                setCartId(cid);
+            } catch (error) {
+                console.error("Error fetching cart:", error.response?.data || error.message);
+                setCartItems([]);
+                setCartId(null);
+            }
+        };
 
-    // Send to backend
-    try {
-      if (cartId) {
-        await createCart({ buyerId: userId, cartItems: [...cartItems, newItem] });
-      }
-    } catch (error) {
-      console.error("Error adding to cart:", error.response?.data || error.message);
-    }
-  };
+        fetchCart();
+    }, [userId]);
 
-  
-  const removeFromCart = async (productId) => {
-    const itemToRemove = cartItems.find((item) => keyOf(item) === productId);
-    if (!itemToRemove) return;
+    // Helper to get product unique key
+    const keyOf = (p) => p.productId ?? p.id;
 
-    setCartItems((prev) => prev.filter((item) => keyOf(item) !== productId));
+    // Add product to cart or increase quantity if exists
+    const addToCart = async (product) => {
+        const id = keyOf(product);
+        const existing = cartItems.find((item) => keyOf(item) === id);
 
-    try {
-      if (cartId && itemToRemove.cartItemId) {
-        await deleteCartItem(cartId, itemToRemove.cartItemId);
-      }
-    } catch (error) {
-      console.error("Error removing cart item:", error.response?.data || error.message);
-    }
-  };
+        if (existing) {
+            updateQuantity(id, existing.quantity + 1);
+            return;
+        }
 
-  // Update quantity (and backend)
-  const updateQuantity = async (productId, quantity) => {
-    const itemToUpdate = cartItems.find((item) => keyOf(item) === productId);
-    if (!itemToUpdate) return;
+        const newItem = { ...product, quantity: 1 };
+        const updatedItems = [...cartItems, newItem];
+        setCartItems(updatedItems);
 
-    const updatedItems = cartItems.map((item) =>
-      keyOf(item) === productId ? { ...item, quantity: Number(quantity) } : item
+        try {
+            if (cartId && userId) {
+                await createCart({ buyer: { userId }, cartItems: updatedItems });
+            }
+        } catch (error) {
+            console.error("Error adding to cart:", error.response?.data || error.message);
+        }
+    };
+
+    // Remove product from cart
+    const removeFromCart = async (productId) => {
+        const toRemove = cartItems.find((item) => keyOf(item) === productId);
+        if (!toRemove) return;
+
+        const updatedItems = cartItems.filter((item) => keyOf(item) !== productId);
+        setCartItems(updatedItems);
+
+        try {
+            if (cartId && toRemove.cartItemId) {
+                await deleteCartItem(cartId, toRemove.cartItemId);
+            }
+        } catch (error) {
+            console.error("Error removing from cart:", error.response?.data || error.message);
+        }
+    };
+
+    // Update quantity of a cart item
+    const updateQuantity = async (productId, quantity) => {
+        if (quantity < 1) {
+            removeFromCart(productId);
+            return;
+        }
+
+        const item = cartItems.find((item) => keyOf(item) === productId);
+        if (!item) return;
+
+        const updatedItems = cartItems.map((it) =>
+            keyOf(it) === productId ? { ...it, quantity: Number(quantity) } : it
+        );
+        setCartItems(updatedItems);
+
+        try {
+            if (cartId && item.cartItemId) {
+                await updateCartItem(cartId, item.cartItemId, { quantity: Number(quantity) });
+            }
+        } catch (error) {
+            console.error("Error updating cart item:", error.response?.data || error.message);
+        }
+    };
+
+    // Clear entire cart
+    const clearCart = async () => {
+        const snapshot = [...cartItems];
+        setCartItems([]);
+        localStorage.removeItem("cart");
+
+        try {
+            if (cartId) {
+                for (const item of snapshot) {
+                    if (item.cartItemId) {
+                        await deleteCartItem(cartId, item.cartItemId);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error clearing cart:", error.response?.data || error.message);
+        }
+    };
+
+    // Save last order to state and localStorage
+    const saveLastOrder = (order) => {
+        setLastOrder(order);
+        try {
+            localStorage.setItem("lastOrder", JSON.stringify(order));
+        } catch {}
+
+    };
+
+    // Clear last order
+    const clearLastOrder = () => {
+        setLastOrder(null);
+        localStorage.removeItem("lastOrder");
+    };
+
+    // Count total items quantity in cart
+    const cartCount = cartItems.reduce((acc, it) => acc + (it.quantity || 0), 0);
+
+    return (
+        <CartContext.Provider
+            value={{
+                cartItems,
+                addToCart,
+                removeFromCart,
+                updateQuantity,
+                clearCart,
+                cartCount,
+                lastOrder,
+                saveLastOrder,
+                clearLastOrder,
+                cartId,
+                userId,
+            }}
+        >
+            {children}
+        </CartContext.Provider>
     );
-    setCartItems(updatedItems);
-
-    try {
-      if (cartId && itemToUpdate.cartItemId) {
-        await updateCartItem(cartId, itemToUpdate.cartItemId, { quantity: Number(quantity) });
-      }
-    } catch (error) {
-      console.error("Error updating cart item:", error.response?.data || error.message);
-    }
-  };
-
-  const clearCart = async () => {
-    setCartItems([]);
-    localStorage.removeItem("cart");
-
-    if (cartId) {
-      // optionally clear backend cart
-      for (const item of cartItems) {
-        if (item.cartItemId) {
-          await deleteCartItem(cartId, item.cartItemId);
-        }
-      }
-    }
-  };
-
-  const saveLastOrder = (order) => setLastOrder(order);
-  const clearLastOrder = () => {
-    setLastOrder(null);
-    localStorage.removeItem("lastOrder");
-  };
-
-  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-
-  return (
-    <CartContext.Provider
-      value={{
-        cartItems,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        cartCount,
-        lastOrder,
-        saveLastOrder,
-        clearLastOrder,
-        cartId,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
-  );
 }
 
 export function useCart() {
-  return useContext(CartContext);
+    return useContext(CartContext);
 }
-
-
-
-
-

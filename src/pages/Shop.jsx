@@ -1,60 +1,92 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext.jsx";
-import { getProducts } from "../services/Api.js";
+import axios from "axios";
 
 export default function Shop() {
-  const { addToCart } = useCart();
-  const [products, setProducts] = useState([]);
+    const { addToCart } = useCart();
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    getProducts()
-      .then(res => setProducts(res.data))
-      .catch(err => console.error("Error fetching products:", err));
-  }, []);
+    // Replace this with your real backend URL
+    const PRODUCTS_API = "http://localhost:8080/CarAccessories/product/all";
 
-  const renderCollection = (title, products) => (
-    <div className="collection-box">
-      <h2 className="shop-title">{title}</h2>
-      <div className="products-scroll">
-        {products.map((prod) => (
-          <div key={prod.productId} className="product-card">
-            <div className="product-image-box">
-              
-              <img
-                src={`http://localhost:8080/${prod.imagePath}`}
-                alt={prod.name}
-                className="product-image"
-              />
+    useEffect(() => {
+        const fetchProducts = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await axios.get(PRODUCTS_API);
+                setProducts(res.data);
+            } catch (err) {
+                console.error("Error fetching products:", err);
+                setError("Failed to load products.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, []);
+
+    const renderCollection = (title, products) => (
+        <div className="collection-box" key={title}>
+            <h2 className="shop-title">{title}</h2>
+            <div className="products-scroll">
+                {products.map((prod) => (
+                    <div key={prod.productId} className="product-card">
+                        <div className="product-image-box">
+                            <img
+                                src={`http://localhost:8080/CarAccessories/uploads/images/${prod.imageURL}`} // <-- fixed here
+                                alt={prod.name}
+                                className="product-image"
+                                onError={(e) => {
+                                    e.target.src = "/placeholder.png"; // fallback image if broken
+                                }}
+                            />
+                        </div>
+                        <div className="product-info">
+                            <h3>{prod.name}</h3>
+                            <p>
+                                <strong>Brand:</strong> {prod.brand}
+                            </p>
+                            <p>
+                                <strong>Size:</strong> {prod.size}
+                            </p>
+                            <p>
+                                <strong>Material:</strong> {prod.material}
+                            </p>
+                            <p>{prod.description}</p>
+                            <p>R {Number(prod.price).toFixed(2)}</p>
+                            <p>
+                                <strong>Stock:</strong> {prod.stockQuantity}
+                            </p>
+                            <button className="add-to-cart" onClick={() => addToCart(prod)}>
+                                ADD TO CART
+                            </button>
+                        </div>
+                    </div>
+                ))}
             </div>
-            <div className="product-info">
-              <h3>{prod.name}</h3>
-              <p><strong>Brand:</strong> {prod.brand}</p>
-              <p><strong>Size:</strong> {prod.size}</p>
-              <p><strong>Material:</strong> {prod.material}</p>
-              <p>{prod.description}</p>
-              <p>R {prod.price.toFixed(2)}</p>
-              <p><strong>Stock:</strong> {prod.stockQuantity}</p>
-              <button className="add-to-cart" onClick={() => addToCart(prod)}>
-                ADD TO CART
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+        </div>
+    );
 
-  const grouped = products.reduce((acc, p) => {
-    acc[p.category] = acc[p.category] || [];
-    acc[p.category].push(p);
-    return acc;
-  }, {});
+    const grouped = products.reduce((acc, p) => {
+        if (!p.category) p.category = "Uncategorized";
+        acc[p.category] = acc[p.category] || [];
+        acc[p.category].push(p);
+        return acc;
+    }, {});
 
-  return (
-    <div className="shop-container">
-      {Object.keys(grouped).map((cat) => renderCollection(cat, grouped[cat]))}
+    if (loading) return <p style={{ textAlign: "center" }}>Loading products...</p>;
+    if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
+    if (products.length === 0) return <p style={{ textAlign: "center" }}>No products found.</p>;
 
-      <style>{`
+    return (
+        <div className="shop-container">
+            {Object.keys(grouped).map((cat) => renderCollection(cat, grouped[cat]))}
+
+            <style>{`
         .shop-container { padding: 20px; max-width: 1200px; margin: auto; }
         .collection-box { border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 15px 0; margin-bottom: 30px; }
         .shop-title { font-size: 24px; font-weight: bold; margin-bottom: 15px; text-align: center; }
@@ -72,6 +104,6 @@ export default function Shop() {
         .add-to-cart:hover { background: #ffb300; transform: translateY(-2px); }
         .add-to-cart:active { transform: scale(0.95); background: #ffa000; }
       `}</style>
-    </div>
-  );
+        </div>
+    );
 }

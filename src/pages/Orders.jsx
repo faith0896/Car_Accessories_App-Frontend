@@ -1,190 +1,147 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getAllOrders } from "../services/Api";
+import { useLocation } from "react-router-dom";
+import { getAllOrders, getMyOrders, updateOrderStatus, deleteOrder } from "../services/Api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedOrderId, setExpandedOrderId] = useState(null); // ✅ Track which order is expanded
-  const navigate = useNavigate();
+    const location = useLocation();
+    const { user, isBuyer } = useAuth();
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await getAllOrders();
-        console.log("Full response from backend:", res);
+    useEffect(() => {
+        const fetchOrders = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const newOrder = location.state?.orderData;
+                if (newOrder) {
+                    setOrders([newOrder]);
+                } else if (isBuyer()) {
+                    const response = await getMyOrders();
+                    setOrders(response.data || []);
+                } else {
+                    const response = await getAllOrders();
+                    setOrders(response.data || []);
+                }
+            } catch (err) {
+                console.error("Error fetching orders:", err);
+                setError("Failed to fetch orders.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        let ordersData;
+        fetchOrders();
+    }, [location.state, isBuyer]);
 
-        // ✅ Handle JSON string responses
-        if (typeof res.data === "string") {
-          try {
-            ordersData = JSON.parse(res.data);
-          } catch (err) {
-            console.error("Failed to parse orders JSON:", err);
-            ordersData = [];
-          }
-        } else {
-          ordersData = res.data;
-        }
+    if (loading) return <p>Loading orders...</p>;
+    if (error) return <p>{error}</p>;
+    if (!orders.length) return <p>No orders found.</p>;
 
-        // ✅ Normalize response
-        if (!ordersData) {
-          setOrders([]);
-        } else if (Array.isArray(ordersData)) {
-          setOrders(ordersData);
-        } else {
-          setOrders([ordersData]);
-        }
-      } catch (err) {
-        console.error("Error fetching orders:", err);
-        setOrders([]);
-      } finally {
-        setLoading(false);
-      }
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "N/A";
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? dateStr : date.toLocaleString();
     };
 
-    fetchOrders();
-  }, []);
+    const canModify = (status) => {
+        if (!status) return false;
+        const editableStatuses = ["PENDING", "PROCESSING"];
+        return editableStatuses.includes(status.toUpperCase());
+    };
 
-  const toggleOrderDetails = (orderId) => {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
-  };
+    const handleUpdateStatus = async (orderId, newStatus) => {
+        if (!window.confirm(`Are you sure you want to mark this order as ${newStatus}?`)) return;
 
-  if (loading) return <p>Loading orders...</p>;
-  if (orders.length === 0) return <p>No orders found.</p>;
+        try {
+            setUpdatingOrderId(orderId);
+            await updateOrderStatus(orderId, newStatus);
+            setOrders((prev) =>
+                prev.map((o) =>
+                    o.orderId === orderId ? { ...o, status: newStatus } : o
+                )
+            );
+            alert(`Order ${orderId} status updated to ${newStatus}`);
+        } catch (err) {
+            console.error("Failed to update order status", err);
+            alert("Failed to update order status. Please try again.");
+        } finally {
+            setUpdatingOrderId(null);
+        }
+    };
 
-  return (
-    <div className="orders">
-      <h2>Order History</h2>
-      {orders.map((order) => (
-        <div
-          key={order.orderId}
-          style={{
-            border: "1px solid #ccc",
-            padding: "12px",
-            borderRadius: "8px",
-            marginBottom: "12px",
-            background: "#fff",
-          }}
-        >
-          <p>
-            <strong>Order ID:</strong> {order.orderId}
-          </p>
-          <p>
-            <strong>Order Date:</strong>{" "}
-            {order.orderDate
-              ? new Date(order.orderDate).toLocaleString()
-              : "N/A"}
-          </p>
-          <p>
-            <strong>Status:</strong> {order.status}
-          </p>
-          <p>
-            <strong>Total:</strong> R{order.totalAmount}
-          </p>
-          <p>
-            <strong>Buyer:</strong>{" "}
-            {order.buyer
-              ? `${order.buyer.firstName || ""} ${order.buyer.lastName || ""} (${
-                  order.buyer.email || "No email"
-                })`
-              : "N/A"}
-          </p>
-          <p>
-            <strong>Payment Method:</strong>{" "}
-            {order.payment?.paymentMethod || "N/A"}
-          </p>
-          <p>
-            <strong>Payment Status:</strong> {order.payment?.status || "N/A"}
-          </p>
+    const handleCancelOrder = async (orderId) => {
+        if (!window.confirm(`Are you sure you want to cancel order ${orderId}?`)) return;
 
-          {/* Expandable order items */}
-          <button
-            onClick={() => toggleOrderDetails(order.orderId)}
-            className="toggle-btn"
-          >
-            {expandedOrderId === order.orderId ? "Hide Items" : "View Items"}
-          </button>
+        try {
+            setUpdatingOrderId(orderId);
+            await deleteOrder(orderId);
+            setOrders((prev) => prev.filter((o) => o.orderId !== orderId));
+            alert(`Order ${orderId} cancelled successfully`);
+        } catch (err) {
+            console.error("Failed to cancel order", err);
+            alert("Failed to cancel order. Please try again.");
+        } finally {
+            setUpdatingOrderId(null);
+        }
+    };
 
-          {expandedOrderId === order.orderId && (
-            <div className="order-items">
-              <h4>Items:</h4>
-              {order.orderItems && order.orderItems.length > 0 ? (
-                <ul>
-                  {order.orderItems.map((item, index) => (
-                    <li key={index}>
-                      {item.product?.name || "Unknown Product"} — Qty: {item.quantity} — R
-                      {(item.priceAtPurchase ?? item.product?.price ?? 0).toFixed(2)}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No items found for this order.</p>
-              )}
+    return (
+        <div className="orders-container">
+            <h2 className="orders-title">Order History</h2>
+            <div className="orders-grid">
+                {orders.map((order) => (
+                    <div key={order.orderId} className="order-card">
+                        <p className="order-id"><strong>Order ID:</strong> {order.orderId}</p>
+                        <p className="order-status"><strong>Status:</strong> {order.status || "N/A"}</p>
+                        <p className="order-date"><strong>Order Date:</strong> {formatDate(order.orderDate)}</p>
+
+                        <div className="payment-info">
+                            <strong>Payment:</strong>{" "}
+                            {order.payment
+                                ? `${order.payment.amount || 0} (${order.payment.status?.toUpperCase() || "PAID"})`
+                                : "PAID"}
+                        </div>
+
+                        {canModify(order.status) && (
+                            <div className="order-actions">
+                                <button
+                                    disabled={updatingOrderId === order.orderId}
+                                    onClick={() => handleUpdateStatus(order.orderId, "UPDATED")}
+                                    title="Mark order as updated"
+                                >
+                                    Update
+                                </button>
+                                <button
+                                    disabled={updatingOrderId === order.orderId}
+                                    onClick={() => handleUpdateStatus(order.orderId, "CANCELLED")}
+                                    title="Cancel this order"
+                                    style={{ marginLeft: "10px", color: "red" }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                ))}
             </div>
-          )}
 
+            <style>{`
+                .orders-container { font-family: Arial; padding: 20px; background: #f5f5f5; min-height: 100vh; }
+                .orders-title { text-align: center; margin-bottom: 20px; font-size: 1.8rem; font-weight: bold; }
+                .orders-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+                .order-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: transform 0.2s, box-shadow 0.2s; }
+                .order-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,0.15); }
+                .order-id { font-weight: 600; font-size: 1.1rem; }
+                .order-date, .order-status { font-size: 0.9rem; color: #666; }
+                .payment-info { margin-top: 12px; font-size: 0.95rem; color: #333; }
+                .order-actions { margin-top: 15px; }
+                button { padding: 8px 12px; font-size: 0.9rem; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background-color: #eee; }
+                button:disabled { cursor: not-allowed; opacity: 0.6; }
+            `}</style>
         </div>
-      ))}
-
-      <button onClick={() => navigate("/")} className="back-home-btn">
-        Back to Home
-      </button>
-
-      <style>{`
-        .orders {
-          padding: 20px;
-          font-family: Arial, sans-serif;
-          background: #f5f5f5;
-        }
-        h2 {
-          margin-bottom: 16px;
-        }
-        .toggle-btn {
-          background: #ffd600;
-          color: #fff;
-          padding: 8px 16px;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          margin-top: 10px;
-        }
-        .toggle-btn:hover {
-          background: #ffb300;
-        }
-        .order-items {
-          margin-top: 12px;
-          padding: 10px;
-          background: #f9f9f9;
-          border-radius: 6px;
-        }
-        .order-items ul {
-          list-style-type: none;
-          padding: 0;
-        }
-        .order-items li {
-          padding: 4px 0;
-          border-bottom: 1px solid #ddd;
-        }
-        .back-home-btn {
-          background: #ffd600;
-          color: #fff;
-          padding: 10px 20px;
-          border: none;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.3s;
-          margin-top: 20px;
-        }
-        .back-home-btn:hover {
-          background: #ffb300;
-        }
-      `}</style>
-    </div>
-  );
+    );
 }
-
-
-
