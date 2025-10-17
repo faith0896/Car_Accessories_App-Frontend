@@ -35,8 +35,8 @@ export default function CartPage({ onClose }) {
   };
 
   const cartTotal = cartItems.reduce(
-      (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
-      0
+    (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
+    0
   );
 
   const handleCheckout = async () => {
@@ -100,71 +100,81 @@ export default function CartPage({ onClose }) {
   };
 
   return (
-      <div className="cart-container">
-        <div className="cart-header">
-          <h2>Your Cart</h2>
-          <button className="close-cart" onClick={onClose} aria-label="Close cart">
-            ✖
-          </button>
-        </div>
+    <div className="cart-container">
+      <div className="cart-header">
+        <h2>All Items</h2>
+      </div>
 
-        {cartItems.length === 0 ? (
-            <p className="empty-cart">Your cart is empty.</p>
-        ) : (
-            <div className="cart-box">
-              {cartItems.map((item) => (
-                  <div key={item.productId || item.id} className="cart-item-card">
-                    <div className="cart-item-left">
-                      <img
-                          src={item.imageURL || item.image}
-                          alt={item.name}
-                          className="cart-item-image"
-                      />
-                      <div className="cart-item-info">
-                        <h3>{item.name}</h3>
-                        <p>R {item.price?.toFixed(2)}</p>
-                        <input
-                            type="number"
-                            value={item.quantity}
-                            min="1"
-                            className="quantity-input"
-                            onChange={(e) =>
-                                handleQuantityChange(item.productId || item.id, e.target.value)
-                            }
-                        />
-                        <p className="item-total">
-                          R {(item.price * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                        className="remove-btn"
-                        onClick={() => removeFromCart(item.productId || item.id)}
-                        title="Remove item"
-                        aria-label={`Remove ${item.name} from cart`}
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
-              ))}
-
-              <h2 className="cart-total">Total: R {cartTotal.toFixed(2)}</h2>
-
-              <div className="checkout-section">
-                <p className="delivery-info">Order will be delivered in 3–5 working days.</p>
-                <button
-                    className="checkout-btn"
-                    onClick={handleCheckout}
-                    disabled={loading}
-                >
-                  {loading ? "Processing..." : "Checkout"}
-                </button>
+      {cartItems.length === 0 ? (
+        <p className="empty-cart">Your cart is empty.</p>
+      ) : (
+        <div className="cart-box">
+          {cartItems.map((item) => (
+            <div key={item.productId || item.id} className="cart-item-card">
+              <div className="cart-item-left">
+                <img
+                  src={item.imageURL || item.image}
+                  alt={item.name}
+                  className="cart-item-image"
+                />
+                <div className="cart-item-info">
+                  <h3>{item.name}</h3>
+                  <p>R {item.price?.toFixed(2)}</p>
+                  <input
+                    type="number"
+                    value={item.quantity}
+                    min="1"
+                    className="quantity-input"
+                    onChange={(e) =>
+                      handleQuantityChange(item.productId || item.id, e.target.value)
+                    }
+                  />
+                  <p className="item-total">
+                    R {(item.price * item.quantity).toFixed(2)}
+                  </p>
+                </div>
               </div>
+              <button
+                className="remove-btn"
+                onClick={() => removeFromCart(item.productId || item.id)}
+                title="Remove item"
+                aria-label={`Remove ${item.name} from cart`}
+              >
+                <Trash2 size={20} />
+              </button>
             </div>
-        )}
+          ))}
 
-        <style>{`
-        .cart-container { padding: 20px; }
+          <h2 className="cart-total">Total: R {cartTotal.toFixed(2)}</h2>
+
+          <div className="checkout-section">
+            <p className="delivery-info">Order will be delivered in 3–5 working days.</p>
+            <button
+              className="checkout-btn"
+              onClick={handleCheckout}
+              disabled={loading}
+            >
+              {loading ? "Processing..." : "Checkout"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        html, body, #root {
+          height: 100%;
+          margin: 0;
+          background-color: #f0f0f0; /* full-page grey background */
+        }
+
+        .cart-container { 
+          padding: 20px; 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background-color: #f0f0f0; /* grey background for cart holder */
+          min-height: calc(100vh - 84px); /* full viewport minus navbar */
+        }
+
         .cart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .close-cart { background: none; border: none; font-size: 1.4rem; cursor: pointer; }
         .empty-cart { text-align: center; font-size: 18px; color: #555; }
@@ -175,12 +185,12 @@ export default function CartPage({ onClose }) {
         .cart-item-info h3 { margin: 0 0 5px; }
         .quantity-input { width: 50px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; margin-top: 5px; }
         .item-total { font-weight: 600; margin-top: 5px; }
-        .remove-btn { background: none; border: none; cursor: pointer; color: #c00; }
+        .remove-btn { background: none; border: none; cursor: pointer; color: #09c; }
         .cart-total { margin-top: 10px; font-weight: 700; }
         .checkout-section { margin-top: 15px; text-align: center; }
         .delivery-info { margin-bottom: 10px; color: #666; }
         .checkout-btn {
-          background-color: #1e40af;
+          background-color: #09c;
           color: white;
           padding: 10px 25px;
           border-radius: 8px;
@@ -194,9 +204,10 @@ export default function CartPage({ onClose }) {
           cursor: not-allowed;
         }
         .checkout-btn:hover:not(:disabled) {
-          background-color: #2563eb;
+          background-color: #0073aa;
         }
       `}</style>
-      </div>
+    </div>
   );
 }
+

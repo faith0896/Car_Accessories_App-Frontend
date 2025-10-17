@@ -1,15 +1,34 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { getAllOrders, getMyOrders, updateOrderStatus, deleteOrder } from "../services/Api.js";
+import { getAllOrders, getMyOrders } from "../services/Api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import placeholder from "../Images/logo.jpg";
+
+const BASE_URL = "http://localhost:8080/CarAccessories";
+
+function resolveImageFromProduct(product) {
+    if (!product) return placeholder;
+    const raw = product.imageURL || product.imageUrl || product.image || product.imagePath || "";
+    if (!raw) return placeholder;
+    if (raw.startsWith("http")) return raw;
+    if (raw.startsWith("/")) return `${BASE_URL}${raw}`;
+    return `${BASE_URL}/uploads/images/${raw}`;
+}
+
+function getProductFromItem(item) {
+    if (!item) return null;
+    if (item.product && typeof item.product === 'object') return item.product;
+    if (item.productDetail && typeof item.productDetail === 'object') return item.productDetail;
+    if (item.productId && typeof item.productId === 'object' && (item.productId.product || item.productId.name)) return item.productId;
+    return null;
+}
 
 export default function Orders() {
     const location = useLocation();
-    const { user, isBuyer } = useAuth();
+    const { isBuyer } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -17,15 +36,29 @@ export default function Orders() {
             setError(null);
             try {
                 const newOrder = location.state?.orderData;
+                let fetchedOrders = [];
+
                 if (newOrder) {
-                    setOrders([newOrder]);
+                    fetchedOrders = [newOrder];
                 } else if (isBuyer()) {
                     const response = await getMyOrders();
-                    setOrders(response.data || []);
+                    fetchedOrders = response.data || [];
                 } else {
                     const response = await getAllOrders();
-                    setOrders(response.data || []);
+                    fetchedOrders = response.data || [];
                 }
+
+                // Map product details to items if present
+                const ordersWithProducts = fetchedOrders.map(order => {
+                    const items = order.orderDetails || order.orderItems || order.items || [];
+                    const detailedItems = items.map(item => {
+                        const product = getProductFromItem(item) || item.product || null;
+                        return { ...item, product };
+                    });
+                    return { ...order, orderDetails: detailedItems };
+                });
+
+                setOrders(ordersWithProducts);
             } catch (err) {
                 console.error("Error fetching orders:", err);
                 setError("Failed to fetch orders.");
@@ -47,101 +80,157 @@ export default function Orders() {
         return isNaN(date.getTime()) ? dateStr : date.toLocaleString();
     };
 
-    const canModify = (status) => {
-        if (!status) return false;
-        const editableStatuses = ["PENDING", "PROCESSING"];
-        return editableStatuses.includes(status.toUpperCase());
-    };
-
-    const handleUpdateStatus = async (orderId, newStatus) => {
-        if (!window.confirm(`Are you sure you want to mark this order as ${newStatus}?`)) return;
-
-        try {
-            setUpdatingOrderId(orderId);
-            await updateOrderStatus(orderId, newStatus);
-            setOrders((prev) =>
-                prev.map((o) =>
-                    o.orderId === orderId ? { ...o, status: newStatus } : o
-                )
-            );
-            alert(`Order ${orderId} status updated to ${newStatus}`);
-        } catch (err) {
-            console.error("Failed to update order status", err);
-            alert("Failed to update order status. Please try again.");
-        } finally {
-            setUpdatingOrderId(null);
-        }
-    };
-
-    const handleCancelOrder = async (orderId) => {
-        if (!window.confirm(`Are you sure you want to cancel order ${orderId}?`)) return;
-
-        try {
-            setUpdatingOrderId(orderId);
-            await deleteOrder(orderId);
-            setOrders((prev) => prev.filter((o) => o.orderId !== orderId));
-            alert(`Order ${orderId} cancelled successfully`);
-        } catch (err) {
-            console.error("Failed to cancel order", err);
-            alert("Failed to cancel order. Please try again.");
-        } finally {
-            setUpdatingOrderId(null);
-        }
-    };
-
     return (
         <div className="orders-container">
             <h2 className="orders-title">Order History</h2>
-            <div className="orders-grid">
-                {orders.map((order) => (
-                    <div key={order.orderId} className="order-card">
-                        <p className="order-id"><strong>Order ID:</strong> {order.orderId}</p>
-                        <p className="order-status"><strong>Status:</strong> {order.status || "N/A"}</p>
-                        <p className="order-date"><strong>Order Date:</strong> {formatDate(order.orderDate)}</p>
-
-                        <div className="payment-info">
-                            <strong>Payment:</strong>{" "}
-                            {order.payment
-                                ? `${order.payment.amount || 0} (${order.payment.status?.toUpperCase() || "PAID"})`
-                                : "PAID"}
-                        </div>
-
-                        {canModify(order.status) && (
-                            <div className="order-actions">
-                                <button
-                                    disabled={updatingOrderId === order.orderId}
-                                    onClick={() => handleUpdateStatus(order.orderId, "UPDATED")}
-                                    title="Mark order as updated"
-                                >
-                                    Update
-                                </button>
-                                <button
-                                    disabled={updatingOrderId === order.orderId}
-                                    onClick={() => handleUpdateStatus(order.orderId, "CANCELLED")}
-                                    title="Cancel this order"
-                                    style={{ marginLeft: "10px", color: "red" }}
-                                >
-                                    Cancel
-                                </button>
+            <div className="orders-body">
+                <div className="orders-inner">
+                    {orders.map(order => (
+                        <div key={order.orderId} className="order-card">
+                            <div className="order-header">
+                                <p>{formatDate(order.orderDate)}</p>
+                                <p>Order NO. {order.orderId}</p>
                             </div>
-                        )}
-                    </div>
-                ))}
+
+                            <div className="order-row">
+                                <div className="order-left">
+                                    {order.orderDetails && order.orderDetails.length > 0 && (
+                                        <div className="order-items">
+                                            {order.orderDetails.map((item, index) => {
+                                                const product = item.product;
+                                                const productName = product?.name || item.productName || item.name || 'Product';
+                                                const imageSrc = resolveImageFromProduct(product);
+
+                                                return (
+                                                    <div key={index} className="order-item">
+                                                        {(product?.shopName || item.shopName) && (
+                                                            <div className="item-shop">{product?.shopName || item.shopName}</div>
+                                                        )}
+                                                        <div className="item-image">
+                                                            <img src={imageSrc} alt={productName} />
+                                                            <div className="item-meta">
+                                                                <p className="item-name">{productName}</p>
+                                                                <p className="item-qty">{item.quantity || 1} item{(item.quantity || 1) > 1 ? "s" : ""}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="order-separator" aria-hidden></div>
+
+                                <div className="order-right">
+                                    <div className="order-price">R{order.payment?.amount || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <style>{`
-                .orders-container { font-family: Arial; padding: 20px; background: #f5f5f5; min-height: 100vh; }
-                .orders-title { text-align: center; margin-bottom: 20px; font-size: 1.8rem; font-weight: bold; }
-                .orders-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-                .order-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: transform 0.2s, box-shadow 0.2s; }
-                .order-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,0.15); }
-                .order-id { font-weight: 600; font-size: 1.1rem; }
-                .order-date, .order-status { font-size: 0.9rem; color: #666; }
-                .payment-info { margin-top: 12px; font-size: 0.95rem; color: #333; }
-                .order-actions { margin-top: 15px; }
-                button { padding: 8px 12px; font-size: 0.9rem; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background-color: #eee; }
-                button:disabled { cursor: not-allowed; opacity: 0.6; }
+                html, body, #root {
+                    height: 100%;
+                    margin: 0;
+                    background-color: #f0f0f0;
+                }
+                .orders-container {
+                    font-family: Arial, sans-serif;
+                    padding: 20px;
+                    min-height: 100vh;
+                    background: #f0f0f0;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .orders-title {
+                    text-align: center;
+                    margin-bottom: 12px;
+                    font-size: 1.8rem;
+                    font-weight: bold;
+                    width: 100%;
+                    max-width: 980px;
+                    color: black;
+                }
+                .orders-body {
+                    width: 100%;
+                    max-width: 980px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: calc(100vh - 120px);
+                }
+                .orders-inner { width: 100%; }
+                .order-card {
+                    background: #f3efefff;
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 12px auto 20px auto;
+                    border: 1px solid #e0e0e0;
+                    max-width: 980px;
+                }
+                .order-header {
+                    margin-bottom: 12px;
+                    font-size: 0.9rem;
+                    color: #333;
+                    display: flex;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                }
+                .order-header p { margin: 2px 0; }
+                .order-row { display: flex; gap: 16px; align-items: stretch; }
+                .order-left { flex: 1; }
+                .order-separator { width: 1px; background: #e6e6e6; border-radius: 1px; }
+                .order-right { width: 140px; display: flex; align-items: center; justify-content: center; }
+                .order-price { font-size: 1.1rem; font-weight: 400; color: #111; }
+                .order-items { display: flex; flex-direction: column; gap: 8px; }
+                .order-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px;
+                    border: 1px solid #e6e6e6;
+                    border-radius: 6px;
+                    background: #f3efefff;
+                }
+                .item-shop {
+                    width: 140px;
+                    font-weight: 600;
+                    font-size: 0.95rem;
+                    color:#222;
+                }
+                .item-image {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    text-align: left;
+                    flex: 1;
+                    gap: 12px;
+                    color: grey;
+                }
+                .item-image img {
+                    width: 60px;
+                    height: 60px;
+                    object-fit: cover;
+                    border-radius: 4px;
+                }
+                .item-meta {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .item-name { margin: 0; font-size: 0.95rem; color: #333; }
+                .item-qty { margin: 0; font-size: 0.85rem; color: #666; }
+                @media (max-width: 800px) {
+                    .order-row { flex-direction: column; }
+                    .order-separator { display: none; }
+                    .order-right { width: 100%; }
+                    .order-item { flex-direction: row; }
+                }
             `}</style>
         </div>
     );
 }
+

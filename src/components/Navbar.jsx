@@ -1,6 +1,6 @@
 // src/components/Navbar.jsx
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import logo from "../Images/logo.jpg";
@@ -14,113 +14,110 @@ export default function Navbar({ onLoginClick, isLoggedIn, onLogoutClick }) {
     if (!isLoggedIn) {
       e.preventDefault();
       setPopupMessage(
-          `Cannot access ${page.charAt(0).toUpperCase() + page.slice(1)} without signing in, please login.`
+        `Cannot access ${page.charAt(0).toUpperCase() + page.slice(1)} without signing in, please login.`
       );
     }
   };
 
   return (
-      <>
-        <nav className="navbar">
-          <div className="left-section">
-            <div className="logo-box">
-              <img src={logo} alt="Logo" className="logo-img" />
-            </div>
+    <>
+      {/* ✅ Redirect users visiting '/' to '/shop' */}
+      {window.location.pathname === "/" && <Navigate to="/shop" replace />}
+
+      <nav className="navbar">
+        <div className="left-section">
+          <div className="logo-box">
+            <img src={logo} alt="Logo" className="logo-img" />
           </div>
+        </div>
 
-          <Link to="/" className="site-name">
-            Car Accessories
-          </Link>
+        <Link to="/shop" className="site-name">
+          Car Accessories
+        </Link>
 
-          <div className="right-links">
-            <Link to="/shop" className="tooltip-container">
-              Shop
-              <span className="tooltip-text">Shop</span>
-            </Link>
+        <div className="right-links">
+          {/* Hide for Admin and Super Admin */}
+          {!isAdmin() && !isSuperAdmin() && (
+            <>
+              <Link to="/shop" className="tooltip-container">
+                Shop
+                <span className="tooltip-text">Shop</span>
+              </Link>
 
-            {isLoggedIn && (
+              {isLoggedIn && (
                 <Link
-                    to="/cart"
-                    onClick={(e) => handleProtectedClick(e, "cart")}
-                    className="tooltip-container cart-link"
+                  to="/cart"
+                  onClick={(e) => handleProtectedClick(e, "cart")}
+                  className="tooltip-container cart-link"
                 >
                   Cart
                   {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
                   <span className="tooltip-text">Cart</span>
                 </Link>
-            )}
+              )}
 
-            <Link
+              <Link
                 to="/orders"
                 onClick={(e) => handleProtectedClick(e, "orders")}
                 className="tooltip-container"
+              >
+                Orders
+                <span className="tooltip-text">Orders</span>
+              </Link>
+            </>
+          )}
+
+          
+          <div className="nav-divider"></div>
+
+          {isLoggedIn ? (
+            <span
+              onClick={onLogoutClick}
+              className="tooltip-container logout-link"
+              style={{ cursor: "pointer" }}
             >
-              Orders
-              <span className="tooltip-text">Orders</span>
-            </Link>
-
-            {(isAdmin() || isSuperAdmin()) && (
-                <Link to="/admin-dashboard" className="tooltip-container">
-                  Admin Dashboard
-                  <span className="tooltip-text">Admin Dashboard</span>
-                </Link>
-            )}
-
-            {isSuperAdmin() && (
-                <Link to="/super-admin-dashboard" className="tooltip-container">
-                  Super Admin Dashboard
-                  <span className="tooltip-text">Super Admin Dashboard</span>
-                </Link>
-            )}
-
-            <div className="nav-divider"></div>
-
-            {isLoggedIn ? (
-                <span
-                    onClick={onLogoutClick}
-                    className="tooltip-container logout-link"
-                    style={{ cursor: "pointer" }}
-                >
               Logout
               <span className="tooltip-text">Logout</span>
             </span>
-            ) : (
-                <span
-                    onClick={onLoginClick}
-                    className="tooltip-container login-link"
-                    style={{ cursor: "pointer" }}
-                >
+          ) : (
+            <span
+              onClick={onLoginClick}
+              className="tooltip-container login-link"
+              style={{ cursor: "pointer" }}
+            >
               Login
               <span className="tooltip-text">Login</span>
             </span>
-            )}
-          </div>
-        </nav>
+          )}
+        </div>
+      </nav>
 
-        {popupMessage && (
-            <div className="popup-overlay" onClick={() => setPopupMessage("")}>
-              <div className="popup-box" onClick={(e) => e.stopPropagation()}>
-                <p>{popupMessage}</p>
-                <div className="popup-actions">
-                  <button className="close-btn" onClick={() => setPopupMessage("")}>
-                    Close
-                  </button>
-                  <button
-                      className="login-btn"
-                      onClick={() => {
-                        setPopupMessage("");
-                        onLoginClick();
-                      }}
-                  >
-                    Login
-                  </button>
-                </div>
-              </div>
+      {popupMessage && (
+        <div className="popup-overlay" onClick={() => setPopupMessage("")}>
+          <div className="popup-box" onClick={(e) => e.stopPropagation()}>
+            <p>{popupMessage}</p>
+            <div className="popup-actions">
+              <button className="close-btn" onClick={() => setPopupMessage("")}>
+                Close
+              </button>
+              <button
+                className="login-btn"
+                onClick={() => {
+                  setPopupMessage("");
+                  onLoginClick();
+                }}
+              >
+                Login
+              </button>
             </div>
-        )}
+          </div>
+        </div>
+      )}
 
-        <style>{`
+      <style>{`
         :root {
+          --nav-blue: #09c;
+          --nav-blue-dark: #0073aa;
           --nav-height: 84px;
         }
 
@@ -135,13 +132,13 @@ export default function Navbar({ onLoginClick, isLoggedIn, onLogoutClick }) {
           left: 0;
           right: 0;
           height: var(--nav-height);
-          background: #001f3f;
+          background: var(--nav-blue);
           color: #fff;
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 0 24px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.25);
           z-index: 1000;
         }
 
@@ -193,13 +190,13 @@ export default function Navbar({ onLoginClick, isLoggedIn, onLogoutClick }) {
         }
 
         .right-links a:hover, .right-links span:hover {
-          background-color: #003366;
-          color: white;
+          background-color: var(--nav-blue-dark);
+          color: #fff;
         }
 
         .cart-badge {
-          background: #003366;
-          color: white;
+          background: #d1c4e9;
+          color: #333;
           font-size: 12px;
           font-weight: bold;
           border-radius: 50%;
@@ -220,8 +217,8 @@ export default function Navbar({ onLoginClick, isLoggedIn, onLogoutClick }) {
           bottom: -28px;
           left: 50%;
           transform: translateX(-50%);
-          background: #003366;
-          color: white;
+          background: #e0e0e0;
+          color: #333;
           font-size: 0.8rem;
           padding: 4px 8px;
           border-radius: 6px;
@@ -284,23 +281,23 @@ export default function Navbar({ onLoginClick, isLoggedIn, onLogoutClick }) {
         }
 
         .close-btn {
-          background: #ccc;
-          color: #222;
+          background: #ddd;
+          color: #333;
         }
 
         .close-btn:hover {
-          background: #aaa;
+          background: #ccc;
         }
 
         .login-btn {
-          background: #001f3f;
+          background: var(--nav-blue);
           color: white;
         }
 
         .login-btn:hover {
-          background: #003366;
+          background: var(--nav-blue-dark);
         }
       `}</style>
-      </>
+    </>
   );
 }

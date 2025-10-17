@@ -34,8 +34,14 @@ export default function Footer() {
             </div>
 
             <style>{`
+
+            :root {
+          --nav-blue: #09c;
+          --nav-blue-dark: #0073aa;
+          --nav-height: 84px;
+        }
         .footer {
-          background: #001f3f;
+          background: #09c;
           color: white;
           padding: 40px 24px;
           display: flex;
@@ -55,7 +61,7 @@ export default function Footer() {
           color: #fff;
           margin-bottom: 15px;
           font-size: 1.1rem;
-          border-bottom: 1px solid #003366;
+          border-bottom: 1px solid #bbb;
           padding-bottom: 5px;
         }
         .footer-section p,
@@ -85,7 +91,7 @@ export default function Footer() {
           width: 100%;
           text-align: center;
           padding-top: 20px;
-          border-top: 1px solid #003366;
+          border-top: 1px solid #bbb;
           margin-top: 20px;
           font-size: 0.8rem;
         }

@@ -29,17 +29,17 @@ export default function Login({ onLogin, onClose }) {
                 return;
             }
 
-            onLogin && onLogin(userData); // call onLogin if provided
-            onClose?.(); // <-- safe call here
+            onLogin && onLogin(userData);
+            onClose?.();
 
-            // Redirect based on role
+            // ✅ Corrected redirect logic
             const role = userData.role.toUpperCase();
             if (role === "SUPER_ADMIN") {
-                navigate("/superadmin");
+                navigate("/super-admin-dashboard");
             } else if (role === "ADMIN") {
-                navigate("/admin");
+                navigate("/admin-dashboard");
             } else if (role === "BUYER") {
-                navigate("/");
+                navigate("/shop");
             } else {
                 setError("Unauthorized role");
             }
@@ -80,7 +80,7 @@ export default function Login({ onLogin, onClose }) {
                     />
 
                     <button
-                        style={{...styles.button, opacity: loading ? 0.7 : 1}}
+                        style={{ ...styles.button, opacity: loading ? 0.7 : 1 }}
                         type="submit"
                         disabled={loading}
                         onMouseEnter={e => !loading && (e.currentTarget.style.background = "#003366")}
@@ -200,3 +200,4 @@ const styles = {
         textAlign: "center",
     },
 };
+

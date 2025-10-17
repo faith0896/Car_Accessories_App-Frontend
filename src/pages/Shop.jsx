@@ -87,6 +87,11 @@ export default function Shop() {
             {Object.keys(grouped).map((cat) => renderCollection(cat, grouped[cat]))}
 
             <style>{`
+            html, body, #root {
+                    height: 100%;
+                    margin: 0;
+                    background-color: #f0f0f0;
+                }
         .shop-container { padding: 20px; max-width: 1200px; margin: auto; }
         .collection-box { border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 15px 0; margin-bottom: 30px; }
         .shop-title { font-size: 24px; font-weight: bold; margin-bottom: 15px; text-align: center; }
@@ -100,9 +105,9 @@ export default function Shop() {
         .product-info { text-align: center; }
         .product-info h3 { font-size: 16px; font-weight: 600; margin-bottom: 5px; }
         .product-info p { color: #555; margin-bottom: 5px; }
-        .add-to-cart { background: #ffd600; border: none; padding: 8px 12px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
-        .add-to-cart:hover { background: #ffb300; transform: translateY(-2px); }
-        .add-to-cart:active { transform: scale(0.95); background: #ffa000; }
+        .add-to-cart { background: #09c; border: none; padding: 8px 12px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
+        .add-to-cart:hover { background: #0073aa; transform: translateY(-2px); }
+        .add-to-cart:active { transform: scale(0.95); background: #0073aa; }
       `}</style>
         </div>
     );

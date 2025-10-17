@@ -11,7 +11,6 @@ import Home from "./pages/Home.jsx";
 import Shop from "./pages/Shop.jsx";
 import ProductDetail from "./pages/ProductDetail.jsx";
 import CartPage from "./pages/CartPage.jsx";
-import Checkout from "./pages/Checkout.jsx";
 import Orders from "./pages/Orders.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard.jsx";
@@ -75,7 +74,7 @@ function Layout() {
                         } else if (role === "ADMIN") {
                             window.history.pushState({}, "", "/admin-dashboard");
                         } else {
-                            window.history.pushState({}, "", "/");
+                            window.history.pushState({}, "", "/shop");
                         }
                         window.dispatchEvent(new PopStateEvent("popstate"));
                         setShowLogin(false);
@@ -90,23 +89,31 @@ function Layout() {
 }
 
 function ProtectedRoute({ children, condition }) {
-    return condition ? children : <Navigate to="/" />;
+    return condition ? children : <Navigate to="/shop" />;
 }
 
 function AppRoutes() {
     const { isAdmin, isSuperAdmin, isAuthenticated } = useAuth();
 
+    // ✅ Redirect users based on role
+    const getLandingPage = () => {
+        if (isSuperAdmin()) return <Navigate to="/super-admin-dashboard" replace />;
+        if (isAdmin()) return <Navigate to="/admin-dashboard" replace />;
+        return <Navigate to="/shop" replace />;
+    };
+
     return (
         <Routes>
             <Route element={<Layout />}>
-                <Route path="/" element={<Home />} />
+                {/* ✅ Changed landing route */}
+                <Route path="/" element={getLandingPage()} />
                 <Route path="/shop" element={<Shop />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/cart" element={<CartPage />} />
-                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/checkout" element={<PaymentPage />} />
                 <Route path="/orders" element={<Orders />} />
 
-                {/* ✅ FIXED: Allow both admins and superadmins to access this */}
+                {/* ✅ Allow admins and superadmins */}
                 <Route
                     path="/admin-dashboard"
                     element={
@@ -138,7 +145,7 @@ function AppRoutes() {
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="*" element={<Navigate to="/" />} />
+                <Route path="*" element={<Navigate to="/shop" />} />
             </Route>
         </Routes>
     );
@@ -153,3 +160,4 @@ export default function App() {
         </AuthProvider>
     );
 }
+

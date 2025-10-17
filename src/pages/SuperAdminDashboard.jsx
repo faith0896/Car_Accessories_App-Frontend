@@ -298,7 +298,7 @@ export default function SuperAdminDashboard() {
                                         <td>
                                                 <span style={{
                                                     ...styles.statusBadge,
-                                                    backgroundColor: user.active ? '#28a745' : '#dc3545'
+                                                    backgroundColor: user.active ? '#09c' : '#dc3545'
                                                 }}>
                                                     {user.active ? 'Active' : 'Inactive'}
                                                 </span>
@@ -361,7 +361,7 @@ export default function SuperAdminDashboard() {
                     <div style={styles.modalContent}>
                         <h3>Confirm Deletion</h3>
                         <p>Are you sure you want to delete user <strong>{userToDelete?.name}</strong>?</p>
-                        <p style={{color: '#dc3545', fontSize: '14px'}}>This action cannot be undone.</p>
+                        <p style={{color: '#09c', fontSize: '14px'}}>This action cannot be undone.</p>
                         <div style={styles.modalActions}>
                             <button
                                 style={styles.cancelButton}
@@ -423,6 +423,7 @@ export default function SuperAdminDashboard() {
 }
 
 const styles = {
+    
     container: {
         minHeight: '100vh',
         backgroundColor: '#f8f9fa',
@@ -449,7 +450,7 @@ const styles = {
     },
     logoutButton: {
         padding: '8px 16px',
-        backgroundColor: '#dc3545',
+        backgroundColor: '#09c',
         color: 'white',
         border: 'none',
         borderRadius: '4px',
@@ -599,16 +600,16 @@ const styles = {
     },
     actionButton: {
         padding: '4px 8px',
-        border: '1px solid #007bff',
+        border: '1px solid #0073aa',
         backgroundColor: 'transparent',
-        color: '#007bff',
+        color: '#09c',
         borderRadius: '4px',
         cursor: 'pointer',
         fontSize: '12px',
     },
     deleteButton: {
-        borderColor: '#dc3545',
-        color: '#dc3545',
+        borderColor: '#0073aa',
+        color: '#09c',
     },
     systemHealth: {
         display: 'flex',
@@ -658,7 +659,7 @@ const styles = {
     },
     confirmButton: {
         padding: '8px 16px',
-        backgroundColor: '#dc3545',
+        backgroundColor: '#09c',
         color: 'white',
         border: 'none',
         borderRadius: '4px',
